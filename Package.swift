@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "Player",
+    name: "OMIPlayer",
     platforms: [
       .iOS(.v12)
     ],
     products: [
-      .library(name: "Player", targets: ["Player"])
+      .library(name: "OMIPlayer", targets: ["Player"])
     ],
     targets: [
       .target(
