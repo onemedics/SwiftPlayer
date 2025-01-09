@@ -487,6 +487,49 @@ extension Player {
 
 extension Player {
 
+    /// Retrieves the total duration of the HLS video asynchronously.
+    /// - Parameter completion: Closure called with the duration when it's available.
+    public func fetchHLSTotalDuration(completion: @escaping (TimeInterval) -> Void) {
+        guard let asset = self._asset as? AVURLAsset else {
+            completion(0.0)
+            return
+        }
+        
+        // Use a background queue to avoid blocking the main thread
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Create a group to handle asynchronous loading
+            let group = DispatchGroup()
+            group.enter()
+            
+            var duration: TimeInterval = 0.0
+            
+            asset.loadValuesAsynchronously(forKeys: ["duration"]) {
+                defer { group.leave() }
+                
+                var error: NSError? = nil
+                let status = asset.statusOfValue(forKey: "duration", error: &error)
+                
+                switch status {
+                case .loaded:
+                    duration = CMTimeGetSeconds(asset.duration)
+                case .failed:
+                    print("Failed to load asset duration: \(error?.localizedDescription ?? "Unknown error")")
+                case .cancelled:
+                    print("Asset duration loading was cancelled")
+                case .unknown:
+                    print("Asset duration loading status is unknown")
+                @unknown default:
+                    print("Unexpected asset duration loading status")
+                }
+            }
+            
+            // Wait for the loading to complete and return on the main queue
+            group.notify(queue: .main) {
+                completion(duration)
+            }
+        }
+    }
+    
     /// Begins playback of the media from the beginning.
     public func playFromBeginning() {
         self.playbackDelegate?.playerPlaybackWillStartFromBeginning(self)
@@ -678,7 +721,6 @@ extension Player {
         }
 
         self._playerItem = playerItem
-        
         self._playerItem?.audioTimePitchAlgorithm = .spectral
         self._playerItem?.preferredPeakBitRate = self.preferredPeakBitRate
         if #available(iOS 11.0, tvOS 11.0, *) {
